@@ -27,13 +27,19 @@
                         <td><span class="badge bg-<?= $k['status'] === 'aktif' ? 'success' : 'secondary' ?>"><?= esc(ucfirst($k['status'])) ?></span></td>
                         <td class="text-end text-nowrap">
                             <a href="<?= site_url("kategori/{$k['id']}/edit") ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
-                            <form action="<?= site_url("kategori/{$k['id']}/hapus") ?>" method="post" class="d-inline" onsubmit="return confirm('Hapus kategori ini?')">
+                            <form action="<?= site_url("kategori/{$k['id']}/hapus") ?>" method="post" class="d-inline"
+                                data-judul="Hapus kategori?"
+                                data-konfirmasi="Kategori <?= esc($k['nama_kategori']) ?> akan dihapus dan tidak bisa dikembalikan."
+                                data-tombol="Ya, hapus">
                                 <?= csrf_field() ?>
-                                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" aria-label="Hapus <?= esc($k['nama_kategori']) ?>"><i class="bi bi-trash"></i></button>
                             </form>
                         </td>
                     </tr>
                 <?php endforeach ?>
+                <?php if (! $kategori): ?><tr>
+                        <td colspan="5" class="text-center text-muted">Belum ada kategori.</td>
+                    </tr><?php endif ?>
             </tbody>
         </table>
     </div>

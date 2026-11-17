@@ -9,7 +9,7 @@ use CodeIgniter\Exceptions\PageNotFoundException;
 
 class Produk extends BaseController
 {
-    private const FIELD = ['category_id', 'kode_produk', 'nama_produk', 'harga_jual', 'harga_pokok', 'stok', 'unit'];
+    private const FIELD = ['category_id', 'nama_produk', 'harga_jual', 'harga_pokok', 'stok', 'unit'];
 
     public function index()
     {
@@ -26,31 +26,50 @@ class Produk extends BaseController
 
     public function tambah()
     {
-        return view('produk/form', ['produk' => null, 'kategori' => model(CategoryModel::class)->getAktif()]);
+        $kategori = model(CategoryModel::class)->getAktif();
+
+        return view('produk/form', [
+            'produk'      => null,
+            'kategori'    => $kategori,
+            'kodeBerikut' => model(ProductModel::class)->kodeBerikutPerKategori($kategori),
+        ]);
     }
 
     public function simpan()
     {
         $model = model(ProductModel::class);
+        $data  = $this->request->getPost(self::FIELD);
 
-        if (! $model->insert($this->request->getPost(self::FIELD))) {
+        $kategori = model(CategoryModel::class)->find((int) ($data['category_id'] ?? 0));
+        if (! $kategori || ($kategori['status'] ?? 'aktif') !== 'aktif') {
+            return redirect()->back()->withInput()->with('errors', ['category_id' => 'Kategori tidak valid.']);
+        }
+
+        $data['kode_produk'] = $model->buatKode($kategori);
+
+        if (! $model->insert($data)) {
             return redirect()->back()->withInput()->with('errors', $model->errors());
         }
 
-        return redirect()->to('/produk')->with('success', 'Produk berhasil ditambahkan.');
+        return redirect()->to('/produk')->with('success', "Produk {$data['kode_produk']} berhasil ditambahkan.");
     }
 
     public function edit(int $id)
     {
-        return view('produk/form', ['produk' => $this->cari($id), 'kategori' => model(CategoryModel::class)->getAktif()]);
+        return view('produk/form', [
+            'produk'      => $this->cari($id),
+            'kategori'    => model(CategoryModel::class)->getAktif(),
+            'kodeBerikut' => [],
+        ]);
     }
 
     public function update(int $id)
     {
         $model = model(ProductModel::class);
-        $this->cari($id);
+        $lama  = $this->cari($id);
+        $data = $this->request->getPost(self::FIELD) + ['id' => $id, 'kode_produk' => $lama['kode_produk']];
 
-        if (! $model->save($this->request->getPost(self::FIELD) + ['id' => $id])) {
+        if (! $model->save($data)) {
             return redirect()->back()->withInput()->with('errors', $model->errors());
         }
 

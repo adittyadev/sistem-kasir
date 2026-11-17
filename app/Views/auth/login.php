@@ -31,7 +31,6 @@
             overflow: hidden;
         }
 
-        /* Dua lingkaran yang bertemu = "titik temu" */
         body::before,
         body::after {
             content: "";

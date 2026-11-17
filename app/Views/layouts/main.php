@@ -12,6 +12,7 @@ $errors  = session()->getFlashdata('errors') ?? [];
 $nama    = (string) session('nama_lengkap');
 $inisial = mb_strtoupper(mb_substr($nama, 0, 1)) ?: '?';
 $beranda = site_url(session('role') === 'admin' ? 'dashboard' : 'transaksi/baru');
+$jsonFlag = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -40,7 +41,6 @@ $beranda = site_url(session('role') === 'admin' ? 'dashboard' : 'transaksi/baru'
             background: #f6f2ee;
         }
 
-        /* ---------- Navbar (selalu tampil) ---------- */
         .navbar-kopi {
             background: var(--espresso);
             height: var(--tinggi-navbar);
@@ -102,7 +102,6 @@ $beranda = site_url(session('role') === 'admin' ? 'dashboard' : 'transaksi/baru'
             outline-offset: 2px;
         }
 
-        /* ---------- Sidebar (hanya menu) ---------- */
         .sidebar {
             --bs-offcanvas-bg: var(--sidebar-bg);
             --bs-offcanvas-color: #e8d9cc;
@@ -167,7 +166,6 @@ $beranda = site_url(session('role') === 'admin' ? 'dashboard' : 'transaksi/baru'
             }
         }
 
-        /* ---------- Komponen yang dipakai halaman lain ---------- */
         .card {
             border: 0;
             box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
@@ -196,7 +194,6 @@ $beranda = site_url(session('role') === 'admin' ? 'dashboard' : 'transaksi/baru'
 </head>
 
 <body>
-    <!-- Navbar: logo/nama usaha, nama pengguna, tombol keluar -->
     <header class="navbar-kopi sticky-top">
         <button class="btn btn-outline-light btn-sm d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Buka menu">
             <i class="bi bi-list fs-5"></i>
@@ -214,12 +211,11 @@ $beranda = site_url(session('role') === 'admin' ? 'dashboard' : 'transaksi/baru'
                 </div>
             </div>
             <button class="btn btn-keluar btn-sm" type="submit" aria-label="Keluar">
-                <i class="bi bi-box-arrow-right"></i><span class="d-none d-sm-inline ms-1">Keluar</span>
+                <i class="d-none d-sm-inline ms-1"></i>Keluar
             </button>
         </form>
     </header>
 
-    <!-- Sidebar: menetap di kiri (desktop), panel geser (ponsel/tablet) -->
     <aside class="sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-label="Menu utama">
         <div class="offcanvas-header d-lg-none px-3 py-3">
             <span class="fw-semibold text-white">Menu</span>
@@ -246,28 +242,81 @@ $beranda = site_url(session('role') === 'admin' ? 'dashboard' : 'transaksi/baru'
 
     <div class="konten">
         <main class="container-xl py-4">
-            <?php if ($pesan = session()->getFlashdata('success')): ?>
-                <div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-1"></i><?= esc($pesan) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif ?>
-            <?php if ($pesan = session()->getFlashdata('error')): ?>
-                <div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-exclamation-triangle me-1"></i><?= esc($pesan) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif ?>
-            <?php if ($errors): ?>
-                <div class="alert alert-danger alert-dismissible fade show">
-                    <ul class="mb-0"><?php foreach ($errors as $e): ?><li><?= esc($e) ?></li><?php endforeach ?></ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif ?>
-
             <?= $this->renderSection('content') ?>
         </main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
+    <script>
+        (function() {
+            const Kopi = Swal.mixin({
+                confirmButtonColor: '#8b5a3c',
+                cancelButtonColor: '#6c757d',
+                customClass: {
+                    popup: 'rounded-4'
+                }
+            });
+            window.Kopi = Kopi;
+
+            <?php if ($pesan = session()->getFlashdata('success')): ?>
+                Kopi.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: <?= json_encode($pesan, $jsonFlag) ?>,
+                    timer: 2200,
+                    timerProgressBar: true,
+                    showConfirmButton: false
+                });
+            <?php endif ?>
+
+            <?php if ($pesan = session()->getFlashdata('error')): ?>
+                Kopi.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: <?= json_encode($pesan, $jsonFlag) ?>,
+                    confirmButtonText: 'Mengerti'
+                });
+            <?php endif ?>
+
+            <?php if ($errors): ?>
+                    (function() {
+                        const daftar = <?= json_encode(array_values((array) $errors), $jsonFlag) ?>;
+                        const ul = document.createElement('ul');
+                        ul.className = 'text-start mb-0';
+                        daftar.forEach(function(teks) {
+                            const li = document.createElement('li');
+                            li.textContent = teks;
+                            ul.appendChild(li);
+                        });
+                        Kopi.fire({
+                            icon: 'error',
+                            title: 'Periksa kembali isian Anda',
+                            html: ul,
+                            confirmButtonText: 'Mengerti'
+                        });
+                    })();
+            <?php endif ?>
+
+            document.addEventListener('submit', function(e) {
+                const f = e.target;
+                if (!f.dataset || !f.dataset.konfirmasi) return;
+                e.preventDefault();
+                Kopi.fire({
+                    icon: f.dataset.ikon || 'warning',
+                    title: f.dataset.judul || 'Yakin?',
+                    text: f.dataset.konfirmasi,
+                    showCancelButton: true,
+                    confirmButtonText: f.dataset.tombol || 'Ya, lanjutkan',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#b3392b',
+                    focusCancel: true
+                }).then(function(hasil) {
+                    if (hasil.isConfirmed) HTMLFormElement.prototype.submit.call(f);
+                });
+            });
+        })();
+    </script>
     <?= $this->renderSection('scripts') ?>
 </body>
 

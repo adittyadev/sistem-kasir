@@ -31,6 +31,40 @@ class ProductModel extends Model
         'unit'        => 'required|max_length[20]',
     ];
 
+    public static function prefixKategori(array $kategori): string
+    {
+        $bersih = static fn($teks): string => strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $teks));
+
+        $prefix = $bersih($kategori['kode_prefix'] ?? '');
+        if ($prefix === '') {
+            $prefix = substr($bersih($kategori['nama_kategori'] ?? ''), 0, 3);
+        }
+
+        return str_pad($prefix, 3, 'X');
+    }
+
+    public function buatKode(array $kategori): string
+    {
+        $prefix = self::prefixKategori($kategori);
+
+        $baris = $this->db->query(
+            'SELECT MAX(CAST(SUBSTRING(kode_produk, ?) AS UNSIGNED)) AS maks FROM products WHERE kode_produk LIKE ?',
+            [strlen($prefix) + 2, $prefix . '-%']
+        )->getRowArray();
+
+        return sprintf('%s-%03d', $prefix, ((int) ($baris['maks'] ?? 0)) + 1);
+    }
+
+    public function kodeBerikutPerKategori(array $daftarKategori): array
+    {
+        $hasil = [];
+        foreach ($daftarKategori as $k) {
+            $hasil[$k['id']] = $this->buatKode($k);
+        }
+
+        return $hasil;
+    }
+
     public function getWithCategory(?int $categoryId = null, ?string $keyword = null): array
     {
         $this->select('products.*, categories.nama_kategori')

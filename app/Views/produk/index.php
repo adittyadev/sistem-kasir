@@ -48,9 +48,12 @@
                         </td>
                         <td class="text-end text-nowrap">
                             <a href="<?= site_url("produk/{$p['id']}/edit") ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
-                            <form action="<?= site_url("produk/{$p['id']}/hapus") ?>" method="post" class="d-inline" onsubmit="return confirm('Hapus produk ini?')">
+                            <form action="<?= site_url("produk/{$p['id']}/hapus") ?>" method="post" class="d-inline"
+                                data-judul="Hapus produk?"
+                                data-konfirmasi="<?= esc($p['nama_produk']) ?> akan dihapus dan tidak bisa dikembalikan."
+                                data-tombol="Ya, hapus">
                                 <?= csrf_field() ?>
-                                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" aria-label="Hapus <?= esc($p['nama_produk']) ?>"><i class="bi bi-trash"></i></button>
                             </form>
                         </td>
                     </tr>

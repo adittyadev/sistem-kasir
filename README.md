@@ -1,76 +1,213 @@
-HEAD
+# Sistem Kasir & Pemesanan Kafe Modern — Titik Temu Kopi
 
-# CodeIgniter 4 Application Starter
+Aplikasi web Point of Sales (POS) Dine-In & Takeaway untuk Kafe "Titik Temu Kopi".
+Dibuat untuk Tema 01 (kode MED-WEB-01): pencatatan pesanan, perhitungan tagihan otomatis, pemantauan omset harian, dan laporan penjualan.
 
-## What is CodeIgniter?
+## Tech Stack
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+| Bagian     | Teknologi                                            |
+| ---------- | ---------------------------------------------------- |
+| Bahasa     | PHP 8.1+                                             |
+| Framework  | CodeIgniter 4 (arsitektur MVC)                       |
+| Database   | MySQL / MariaDB                                      |
+| Frontend   | Bootstrap 5.3, Bootstrap Icons, Chart.js 4 (via CDN) |
+| Ekspor PDF | Dompdf (dompdf/dompdf)                               |
+| Password   | Bcrypt (password_hash)                               |
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+## Fitur
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+### 1. Autentikasi & Hak Akses
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+- Form login dengan validasi input dan pesan error (username/password salah)
+- Password disimpan sebagai hash Bcrypt, tidak ada plaintext
+- Proteksi route lewat Filter (auth dan role:admin): dashboard, transaksi, dan laporan tidak bisa dibuka tanpa login
+- Logout menghancurkan session dan kembali ke halaman login
+- Proteksi CSRF pada semua form POST
+- Dua role:
 
-## Installation & updates
+| Fitur                                        | Admin / Manager | Kasir / Waiter |
+| -------------------------------------------- | :-------------: | :------------: |
+| Dashboard                                    |        ✔        |       –        |
+| Kelola kategori & produk (menu, harga, stok) |        ✔        |       –        |
+| Kelola akun pengguna                         |        ✔        |       –        |
+| Laporan & ekspor PDF/Excel                   |        ✔        |       –        |
+| Buat pesanan, terima pembayaran, cetak struk |        ✔        |       ✔        |
+| Riwayat transaksi                            |      Semua      | Milik sendiri  |
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+### 2. Dashboard
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+- 4 KPI: Total Omset Hari Ini, Jumlah Pesanan (status selesai hari ini), Menu Terlaris (bulan berjalan), Peringatan Stok Rendah
+- Grafik batang omset 7 hari terakhir (Chart.js)
+- Tabel 10 transaksi terbaru beserta status
+- Tombol aksi cepat "Buat Transaksi Baru"
 
-## Setup
+### 3. Transaksi Inti (Master–Detail)
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+- Nomor invoice otomatis INV-POS-YYYYMMDD-XXXX (urutan reset per hari, unik)
+- Tipe pesanan Dine-In (wajib pilih meja) atau Takeaway
+- Nama Pemesan / Catatan Meja
+- Item dinamis: pilih menu, qty, catatan khusus (mis. Less Sugar)
+- Kalkulasi otomatis: subtotal per baris, pajak PB1 10%, diskon/voucher, grand total
+- Pembayaran: Tunai (kembalian otomatis), QRIS, Transfer Bank, Kartu Debit
+- Status pesanan: Diproses, Selesai, Dibatalkan
+- Struk siap cetak: thermal 80mm, 58mm, atau A4
 
-## Important Change with index.php
+Validasi & integritas data
 
-`index.php` is no longer in the root of the project! It has been moved inside the _public_ folder,
-for better security and separation of components.
+- Stok dicek sebelum transaksi disimpan (baris produk dikunci FOR UPDATE agar tidak terjadi stok ganda)
+- Pembayaran tunai yang kurang dari total ditolak
+- Header, detail, dan pengurangan stok disimpan dalam satu database transaction (commit/rollback)
+- Semua nilai uang dihitung ulang di server dari harga produk, bukan dari input browser
+- Pesanan yang dibatalkan otomatis mengembalikan stok
 
-This means that you should configure your web server to "point" to your project's _public_ folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter _public/..._, as the rest of your logic and the
-framework are exposed.
+### 4. Laporan & Ekspor
 
-**Please** read the user guide for a better explanation of how CI4 works!
+- Filter: rentang tanggal, kategori menu, metode pembayaran
+- Summary bar: Omset Bruto, Total Diskon, Pajak Terkumpul, Omset Bersih, Rata-rata Nilai Transaksi
+- Kolom tabel: No. Faktur, Tanggal & Jam, Kasir, Tipe Pesanan, Item Terjual, Subtotal, Pajak, Grand Total, Status
+- Ekspor PDF dan Excel/CSV
 
-## Repository Management
+## Struktur Folder
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+app/
+├── Config/
+│ └── Routes.php
+├── Controllers/
+│ ├── Auth.php Dashboard.php Kategori.php Produk.php
+│ └── User.php Transaksi.php Laporan.php
+├── Filters/
+│ └── RoleFilter.php
+├── Helpers/
+│ └── format_helper.php
+├── Models/
+│ ├── UserModel.php CategoryModel.php ProductModel.php
+│ └── OrderModel.php OrderDetailModel.php
+└── Views/
+├── layouts/main.php
+├── auth/login.php
+├── dashboard/index.php
+├── kategori/ index.php form.php
+├── produk/ index.php form.php
+├── user/ index.php form.php
+├── transaksi/ index.php baru.php detail.php struk.php
+└── laporan/ index.php pdf.php
+db_pos_kafe.sql
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+## Skema Database
 
-## Server Requirements
+Database db_pos_kafe terdiri dari 5 tabel:
 
-PHP version 8.2 or higher is required, with the following extensions installed:
+| Tabel         | Keterangan                                        |
+| ------------- | ------------------------------------------------- |
+| users         | Akun pengguna (role admin / kasir, password hash) |
+| categories    | Kategori menu (Coffee, Non-Coffee, Food, Pastry)  |
+| products      | Master menu: harga jual, harga pokok, stok, unit  |
+| orders        | Header transaksi                                  |
+| order_details | Rincian item pesanan                              |
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+Relasi: categories 1─N products, users 1─N orders, orders 1─N order_details, products 1─N order_details.
 
-> [!WARNING]
->
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - The end of life date for PHP 8.1 was December 31, 2025.
-> - If you are still using below PHP 8.2, you should upgrade immediately.
-> - The end of life date for PHP 8.2 will be December 31, 2026.
+## Instalasi
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+### Prasyarat
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- # [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+- PHP 8.1 atau lebih baru dengan ekstensi intl, mbstring, mysqlnd, dom
+- Composer
+- MySQL
+- Koneksi internet saat dijalankan (Bootstrap, ikon, dan Chart.js dimuat dari CDN)
 
-# sistem-kasir
+### Langkah
 
-fe56104289a8bc14e750b5267a9a12ab64842361
+1. Clone Repository
+   bash
+   git clone https://github.com/adittyadev/sistem-kasir.git
+
+2. Masuk ke Folder Proyek
+   bash
+   cd sistem-kasir
+
+3. Pindahkan ke Folder Web Server
+   bash
+   C:\laragon2\www\sistem-kasir
+
+4. Import database
+
+- Buka MySQL.
+- Buat database dengan nama sesuai konfigurasi aplikasi.
+- Import file db_pos_kafe.sql.
+
+5. Atur environment
+   bash
+   cp env .env
+
+Edit .env:
+ini
+CI_ENVIRONMENT = development
+
+app.baseURL = 'http://localhost:8080/'
+
+database.default.hostname = localhost
+database.default.database = db_pos_kafe
+database.default.username = root
+database.default.password =
+database.default.DBDriver = MySQLi
+database.default.port = 3306
+
+6. Daftarkan Filter dan aktifkan CSRF — app/Config/Filters.php
+   php
+   use App\Filters\RoleFilter;
+
+public array $aliases = [
+// ...alias bawaan...
+'auth' => RoleFilter::class,
+'role' => RoleFilter::class,
+];
+
+7. Daftarkan helper — app/Controllers/BaseController.php
+   php
+   protected $helpers = ['url', 'form', 'format'];
+
+8. Atur zona waktu dan URL — app/Config/App.php
+   php
+   public string $appTimezone = 'Asia/Jakarta';
+   public string $indexPage = '';
+
+9. Jalankan aplikasi
+   bash
+   php spark serve
+
+Buka http://localhost:8080 lalu login dengan akun uji coba di bawah.
+
+## Akun Uji Coba
+
+| Role                    | Username | Password |
+| ----------------------- | -------- | -------- |
+| Administrator / Manager | admin    | password |
+| Kasir / Waiter          | kasir    | password |
+
+## Alur Pengujian yang Disarankan
+
+1. Login sebagai kasir, lalu coba buka /dashboard — harus dialihkan kembali ke form transaksi.
+2. Buat transaksi Dine-In dengan beberapa item, isi catatan, dan bayar tunai. Pastikan total, pajak, dan kembalian benar.
+3. Coba bayar tunai kurang dari total — harus ditolak.
+4. Coba pesan melebihi stok — harus ditolak dan tidak ada data yang tersimpan.
+5. Buka detail transaksi, tandai Selesai, lalu cetak struk (80mm, 58mm, A4).
+6. Batalkan sebuah transaksi — stok produk harus kembali.
+7. Login sebagai admin: cek dashboard, tambah/ubah menu, atur stok, lalu buat laporan dengan filter dan ekspor PDF/CSV.
+8. Logout, lalu buka /dashboard langsung — harus dialihkan ke halaman login.
+
+## Aturan Bisnis
+
+- Pajak PB1 10% dihitung dari subtotal sebelum diskon.
+- Grand Total = Subtotal + Pajak − Diskon.
+- Omset Bersih (laporan) = Omset Bruto − Total Diskon.
+- Dashboard dan summary laporan hanya menghitung pesanan berstatus Selesai.
+- Pesanan baru berstatus Diproses dan diubah ke Selesai oleh kasir/admin dari halaman detail.
+- Stok rendah: stok ≤ 10 (konstanta ProductModel::BATAS_STOK_RENDAH).
+- Kategori yang masih dipakai produk dan produk yang sudah pernah terjual tidak dapat dihapus.
+- Akun pengguna tidak dihapus (riwayat transaksi mengacu ke akun); cukup dinonaktifkan.
+
+## Catatan
+
+- Data contoh pada database.sql memuat 5 transaksi bertanggal 15–17 November 2026. Angka "hari ini" di dashboard hanya terisi jika tanggal server sama dengan tanggal data contoh.
+- Skema database mengikuti rekomendasi soal, dengan satu tambahan kolom orders.nama_pemesan untuk input "Nama Pemesan / Catatan Meja" yang diminta pada alur form transaksi.
